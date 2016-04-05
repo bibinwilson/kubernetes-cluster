@@ -44,7 +44,7 @@ Vagrant.configure(2) do |config|
     $config3=`cat << EOF > /etc/kubernetes/kubelet
     KUBELET_ADDRESS="--address=0.0.0.0"
     KUBELET_PORT="--port=10250"
-    KUBELET_HOSTNAME="--hostname_override=kube-node2"
+    KUBELET_HOSTNAME="--hostname_override=kube-node1"
     KUBELET_API_SERVER="--api_servers=http://kube-master:8080"
     KUBELET_ARGS=""
     EOF`
