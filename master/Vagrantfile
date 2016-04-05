@@ -1,0 +1,62 @@
+#
+# kubernetes Master File
+# Author: Bibin Wilson
+# Email: bibinwilson@gmail.com
+#
+Vagrant.configure(2) do |config|
+
+  config.vm.box = "centos/7"
+
+  config.vm.network "private_network", ip: "192.168.10.2"
+
+  config.vm.hostname = "kube-master"
+
+  config.vm.provider "virtualbox" do |vb|
+
+    vb.memory = "2000"
+
+  end
+
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo yum -y update
+    sudo systemctl stop firewalld
+    sudo systemctl disable firewalld
+    sudo yum -y install ntp
+    sudo systemctl start ntpd
+    sudo systemctl enable ntpd
+
+    $config=`cat << EOF >> /etc/hosts
+    192.168.10.2   kube-master
+    192.168.10.3   kube-node1
+    192.168.10.4   kube-node2
+    EOF`
+
+    yum -y install etcd kubernetes
+
+    $config1 = `cat << EOF > /etc/etcd/etcd.conf
+    ETCD_NAME=default
+    ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
+    ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379"
+    ETCD_ADVERTISE_CLIENT_URLS="http://localhost:2379"
+    EOF`
+
+    $config2 = `cat << EOF > /etc/kubernetes/apiserver
+    KUBE_API_ADDRESS="--address=0.0.0.0"
+    KUBE_API_PORT="--port=8080"
+    KUBELET_PORT="--kubelet_port=10250"
+    KUBE_ETCD_SERVERS="--etcd_servers=http://127.0.0.1:2379"
+    KUBE_SERVICE_ADDRESSES="--service-cluster-ip-range=10.254.0.0/16"
+    KUBE_ADMISSION_CONTROL="--admission_control=NamespaceLifecycle,NamespaceExists,LimitRanger,SecurityContextDeny,ResourceQuota"
+    KUBE_API_ARGS=""
+    EOF`
+
+    for SERVICES in etcd kube-apiserver kube-controller-manager kube-scheduler; do
+      sudo systemctl restart $SERVICES
+      sudo systemctl enable $SERVICES
+      sudo systemctl status $SERVICES
+    done
+
+    etcdctl mk /atomic.io/network/config '{"Network":"172.17.0.0/16"}'
+
+  SHELL
+end
